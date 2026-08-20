@@ -1,26 +1,29 @@
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
-const { JsonDB, Config } = require('node-json-db');
+const mongoose = require('mongoose');
 const session = require('express-session');
 const flash = require('express-flash');
 
 const app = express();
 
-// Inisialisasi Database JSON (Otomatis membuat file database.json)
-const db = new JsonDB(new Config("database", true, true, '/'));
+// Koneksi ke MongoDB Atlas menggunakan Environment Variable dari Render
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Berhasil terhubung ke MongoDB Atlas Cloud!'))
+  .catch(err => console.error('Koneksi database gagal:', err));
 
-// Inisialisasi Data Awal jika database masih kosong
-async function initDB() {
-    try {
-        await db.getData("/links");
-    } catch(error) {
-        await db.push("/links", []);
-    }
-}
-initDB();
+// Skema & Model Database untuk Album
+const linkSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
+    nama_album: { type: String, required: true },
+    url_link: { type: String, required: true },
+    password: { type: String, default: "" }
+});
 
-// Konfigurasi Express (Menggunakan Port 8091)
+const LinkModel = mongoose.model('Link', linkSchema);
+
+// Konfigurasi Express
+const PORT = process.env.PORT || 8091;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
@@ -44,57 +47,61 @@ function authAdmin(req, res, next) {
     res.redirect('/login');
 }
 
-// ROUTE 1: Halaman Utama
+// ROUTE 1: Halaman Utama (Menampilkan daftar album dari MongoDB)
 app.get('/', async (req, res) => {
-    const links = await db.getData("/links");
-    const reversedLinks = [...links].reverse();
-    res.render('index', { links: reversedLinks, isAdmin: req.session.isAdmin || false });
+    try {
+        const links = await LinkModel.find().sort({ _id: -1 });
+        res.render('index', { links: links, isAdmin: req.session.isAdmin || false });
+    } catch (error) {
+        console.error("Error memuat data:", error);
+        res.render('index', { links: [], isAdmin: req.session.isAdmin || false });
+    }
 });
 
-// RUTE KHUSUS BYPASS PROXY UNTUK GAMBAR BACKGROUND
+// RUTE PROXY GAMBAR BACKGROUND
 app.get('/jalur-aman-bg.png', (req, res) => {
     const imagePath = path.join(__dirname, 'public', 'background.png');
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400');
 
     const stream = fs.createReadStream(imagePath);
-    stream.on('error', (err) => {
+    stream.on('error', () => {
         res.status(404).send('Gambar tidak ditemukan');
     });
     stream.pipe(res);
 });
 
-// ROUTE 2: Tambah Link
+// ROUTE 2: Tambah Link Album Baru ke Cloud
 app.post('/add-link', authAdmin, async (req, res) => {
-    const { nama_album, url_link, password } = req.body;
-    if (nama_album && url_link) {
-        const newLink = {
-            id: Date.now().toString(),
-            nama_album,
-            url_link,
-            password: password || "" // Pastikan baris ini ada
-        };
-        await db.push("/links[]", newLink);
+    try {
+        const { nama_album, url_link, password } = req.body;
+        if (nama_album && url_link) {
+            const newLink = new LinkModel({
+                id: Date.now().toString(),
+                nama_album,
+                url_link,
+                password: password || ""
+            });
+            await newLink.save();
+        }
+        res.redirect('/');
+    } catch (error) {
+        console.error("Gagal menambah link:", error);
+        res.status(500).send("Gagal menyimpan data ke database cloud");
     }
-    res.redirect('/');
 });
 
-// ROUTE 3: Edit Link (Sudah diperbarui dengan password & dibersihkan dari duplikasi)
+// ROUTE 3: Edit Link Album
 app.post('/edit-link/:id', authAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { nama_album, url_link, password } = req.body;
 
-        const links = await db.getData("/links");
-        const index = links.findIndex(l => l.id === id);
+        await LinkModel.findOneAndUpdate(
+            { id: id },
+            { nama_album, url_link, password: password || "" }
+        );
 
-        if (index !== -1) {
-            links[index].nama_album = nama_album;
-            links[index].url_link = url_link;
-            links[index].password = password || "";
-
-            await db.push("/links", links);
-        }
         res.redirect('/');
     } catch (error) {
         console.error("Error Edit:", error);
@@ -102,12 +109,15 @@ app.post('/edit-link/:id', authAdmin, async (req, res) => {
     }
 });
 
-// ROUTE 4: Hapus Link
+// ROUTE 4: Hapus Link Album
 app.post('/delete-link/:id', authAdmin, async (req, res) => {
-    const links = await db.getData("/links");
-    const filteredLinks = links.filter(link => link.id !== req.params.id);
-    await db.push("/links", filteredLinks);
-    res.redirect('/');
+    try {
+        await LinkModel.findOneAndDelete({ id: req.params.id });
+        res.redirect('/');
+    } catch (error) {
+        console.error("Error Hapus:", error);
+        res.status(500).send("Gagal menghapus data");
+    }
 });
 
 // ROUTE 5: Halaman Login
@@ -135,36 +145,11 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-// ROUTE 8: Mengubah Urutan Posisi Album
-app.post('/urutan-link/:id/:arah', authAdmin, async (req, res) => {
-    try {
-        const { id, arah } = req.params;
-
-        const links = await db.getData("/links");
-        const index = links.findIndex(l => l.id === id);
-
-        if (index !== -1) {
-            if (arah === 'naik' && index < links.length - 1) {
-                [links[index], links[index + 1]] = [links[index + 1], links[index]];
-            } else if (arah === 'turun' && index > 0) {
-                [links[index], links[index - 1]] = [links[index - 1], links[index]];
-            }
-
-            await db.push("/links", links);
-        }
-        res.redirect('/');
-    } catch (error) {
-        console.error("Error Urutan:", error);
-        res.status(500).send("Gagal mengubah urutan");
-    }
-});
-
-// ROUTE 9: Verifikasi Sandi Album
+// ROUTE 8: Verifikasi Sandi Album Terkunci
 app.post('/verify-album/:id', async (req, res) => {
     try {
         const { input_password } = req.body;
-        const links = await db.getData("/links");
-        const album = links.find(l => l.id === req.params.id);
+        const album = await LinkModel.findOne({ id: req.params.id });
 
         if (!album) return res.status(404).send("Album tidak ditemukan");
 
@@ -178,8 +163,8 @@ app.post('/verify-album/:id', async (req, res) => {
     }
 });
 
-// Menjalankan Server pada Port 8091
-app.listen(8091, () => {
-    console.log('Server Alfattah berjalan di http://localhost:8091');
+// Menjalankan Server
+app.listen(PORT, () => {
+    console.log(`Server Alfattah berjalan di port ${PORT}`);
 });
 

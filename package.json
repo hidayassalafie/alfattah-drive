@@ -2,7 +2,7 @@
   "name": "alfattah-web",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,6 +15,6 @@
     "express": "^5.2.1",
     "express-flash": "^0.0.2",
     "express-session": "^1.19.0",
-    "node-json-db": "^2.6.0"
+    "mongoose": "^8.24.3"
   }
 }
