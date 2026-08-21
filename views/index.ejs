@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Data Santri</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .btn-pill { border-radius: 50px; font-weight: 700; font-size: 0.85rem; padding: 8px 16px; }
+        .bg-navy { background-color: #1e293b; }
+    </style>
+</head>
+
+<body class="bg-gray-200 min-h-screen p-4 flex justify-center">
+
+  <div class="bg-white rounded-[24px] shadow-xl w-full max-w-lg p-6">
+    
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-extrabold text-gray-900">MANAJEMEN DATA SANTRI</h1>
+      <p class="text-[10px] font-bold text-gray-400 tracking-widest uppercase">SISTEM INFORMASI ADMINISTRASI SANTRI</p>
+    </div>
+
+    <!-- Navigasi -->
+    <div class="flex gap-2 mb-6">
+      <button class="bg-blue-600 text-white btn-pill">HOME</button>
+      <button class="bg-gray-100 text-gray-600 btn-pill">STATISTIK</button>
+      <button class="bg-gray-100 text-gray-600 btn-pill">D.I.S</button>
+      <% if (isAdmin) { %>
+        <a href="/logout" class="bg-rose-100 text-rose-600 btn-pill ml-auto">LOGOUT</a>
+      <% } else { %>
+        <a href="/login" class="bg-blue-600 text-white btn-pill ml-auto">LOGIN</a>
+      <% } %>
+    </div>
+
+    <!-- Filter & Tombol Aksi -->
+    <div class="space-y-3 mb-6">
+      <div class="grid grid-cols-2 gap-2">
+        <select class="bg-gray-50 border rounded-full px-4 py-2 text-xs font-bold text-gray-600">
+          <option>KAMAR: SEMUA</option>
+        </select>
+        <select class="bg-gray-50 border rounded-full px-4 py-2 text-xs font-bold text-gray-600">
+          <option>STATUS: SEMUA</option>
+        </select>
+      </div>
+
+      <% if (isAdmin) { %>
+        <div class="flex flex-wrap gap-2">
+          <button class="bg-emerald-600 text-white btn-pill">+ TAMBAH</button>
+          <button class="bg-amber-500 text-white btn-pill">✏ EDIT</button>
+          <button class="bg-rose-600 text-white btn-pill">🗑 HAPUS</button>
+          <button class="bg-blue-600 text-white btn-pill">↑ NAIK</button>
+          <button class="bg-gray-800 text-white btn-pill">↓ TURUN</button>
+        </div>
+      <% } %>
+
+      <div class="flex gap-2">
+        <input type="text" placeholder="Cari nama, NIS, NIK..." class="flex-1 border rounded-full px-4 py-2 text-sm bg-gray-50">
+        <button class="bg-gray-900 text-white px-6 py-2 rounded-xl text-sm font-bold">CARI</button>
+      </div>
+    </div>
+
+    <!-- Tabel -->
+    <div class="overflow-x-auto rounded-xl border border-gray-200">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-navy text-white">
+          <tr>
+            <th class="p-3"><input type="checkbox"></th>
+            <th class="p-3">NO</th>
+            <th class="p-3">NIS</th>
+            <th class="p-3">NIK</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          <!-- Data loop -->
+          <% links.forEach((link) => { %>
+          <tr>
+            <td class="p-3"><input type="checkbox"></td>
+            <td class="p-3">1</td>
+            <td class="p-3"><%= link.nama_album %></td>
+            <td class="p-3">Data NIK...</td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</body>
+</html>
+
