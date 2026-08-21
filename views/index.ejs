@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al-Fattah Drive Album</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="relative min-h-screen font-sans antialiased bg-gray-900">
+  <!-- GAMBAR BACKGROUND .JPG RINGAN LOLOS PROXY -->
+  <img src="/background.jpg" class="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none" alt="Background">
+  <!-- LAPISAN OVERLAY HITAM TRANSPARAN -->
+  <div class="fixed inset-0 bg-black/60 z-10 pointer-events-none"></div>
+  <!-- CONTAINER UTAMA -->
+  <div class="relative z-20 max-w-2xl mx-auto px-4 py-8">
+
+    <div class="bg-white/95 backdrop-blur p-4 rounded-xl shadow-md flex justify-between items-center mb-6">
+      <h1 class="text-lg font-bold text-gray-800 m-0">AL-FATTAH DRIVE</h1>
+      
+      <div class="flex items-center gap-2">
+        <a href="https://hidaybase.my.id" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all text-center inline-block" style="text-decoration: none;">
+          Home
+        </a>
+
+        <% if (isAdmin) { %>
+          <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all text-center inline-block" style="text-decoration: none;">
+            Logout Admin
+          </a>
+        <% } else { %>
+          <a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all text-center inline-block" style="text-decoration: none;">
+            Login Admin
+          </a>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (isAdmin) { %>
+      <div class="bg-white/95 backdrop-blur p-6 rounded-xl shadow-md mb-6">
+        <h2 class="text-md font-semibold mb-4 text-gray-800">Tambah Album Baru</h2>
+        <form action="/add-link" method="POST" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">NAMA ALBUM</label>
+            <input type="text" name="nama_album" required class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">URL LINK GOOGLE DRIVE</label>
+            <input type="url" name="url_link" required class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://drive.google.com/...">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-600 mb-1">SANDI ALBUM (Opsional)</label>
+            <input type="text" name="password" class="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Kosongkan jika bebas diakses">
+          </div>
+          <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg text-sm shadow transition-all">Simpan Link</button>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="space-y-4">
+      <h2 class="text-xs font-bold text-gray-300 tracking-wider uppercase">Daftar Album</h2>
+      
+      <% if (links.length === 0) { %>
+        <p class="text-gray-400 text-center bg-white/10 backdrop-blur py-6 rounded-xl text-sm">Belum ada album yang disimpan.</p>
+      <% } %>
+
+      <% links.forEach((link) => { %>
+        <div class="bg-white/95 backdrop-blur p-4 rounded-xl shadow-md space-y-3">
+          <% if (link.password && link.password !== "") { %>
+            <!-- Jika album dikunci dengan sandi -->
+            <form action="/verify-album/<%= link.id %>" method="POST" class="flex flex-col gap-2">
+                <div class="flex items-center gap-2">
+                    <span>📁</span> 
+                    <span class="font-semibold text-gray-800"><%= link.nama_album %> <span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-normal">Terkunci</span></span>
+                </div>
+                <div class="flex gap-2">
+                    <input type="password" name="input_password" placeholder="Masukkan Sandi" required class="border px-3 py-1 rounded-lg text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm hover:bg-blue-700 font-medium">Buka</button>
+                </div>
+            </form>
+          <% } else { %>
+            <!-- Jika album bebas (tanpa sandi) -->
+            <a href="<%= link.url_link %>" target="_blank" class="flex items-center gap-2 text-gray-800 font-semibold hover:text-blue-600 transition-all">
+                <span>📁</span> <%= link.nama_album %>
+            </a>
+          <% } %>
+
+          <% if (isAdmin) { %>
+            <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+              <form action="/urutan-link/<%= link.id %>/naik" method="POST" class="m-0">
+                <button type="submit" class="text-gray-500 hover:text-black font-bold p-1 text-base" title="Pindah ke atas">▲</button>
+              </form>
+              
+              <form action="/urutan-link/<%= link.id %>/turun" method="POST" class="m-0">
+                <button type="submit" class="text-gray-500 hover:text-black font-bold p-1 text-base" title="Pindah ke bawah">▼</button>
+              </form>
+              
+              <button type="button" onclick="editLink('<%= link.id %>', '<%= link.nama_album.replace(/'/g, `\\'` ) %>', '<%= link.url_link %>', '<%= link.password || '' %>')" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-md text-xs font-medium shadow-sm">
+                Edit
+              </button>
+              
+              <form action="/delete-link/<%= link.id %>" method="POST" class="m-0">
+                <button type="submit" class="text-red-500 hover:text-red-700 text-xs font-medium p-1" onclick="return confirm('Hapus album ini?')">Hapus</button>
+              </form>
+            </div>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+
+    <footer class="mt-16 mb-4 text-center text-xs text-gray-300 tracking-wide space-y-1">
+      <p>
+        Powered by: 
+        <a href="https://www.instagram.com/hiday.its" target="_blank" class="text-blue-400 hover:text-blue-300 font-semibold transition-all" style="text-decoration: none;">
+          @hiday.its
+        </a>
+      </p>
+      <p class="text-gray-400">
+        email@hidaybase.my.id
+      </p>
+    </footer>
+
+  </div>
+
+  <script>
+  function editLink(id, namaLama, urlLama, passwordLama) {
+      const namaBaru = prompt("Masukkan Nama Album Baru:", namaLama);
+      if (namaBaru === null) return;
+      
+      const urlBaru = prompt("Masukkan URL Link Baru:", urlLama);
+      if (urlBaru === null) return;
+      
+      const passwordBaru = prompt("Masukkan Sandi Baru (kosongkan jika tidak ingin dikunci):", passwordLama);
+      if (passwordBaru === null) return;
+
+      if (!namaBaru.trim() || !urlBaru.trim()) {
+          alert("Nama dan URL tidak boleh kosong!");
+          return;
+      }
+      
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/edit-link/' + id;
+      
+      const inputNama = document.createElement('input');
+      inputNama.type = 'hidden';
+      inputNama.name = 'nama_album';
+      inputNama.value = namaBaru.trim();
+      
+      const inputUrl = document.createElement('input');
+      inputUrl.type = 'hidden';
+      inputUrl.name = 'url_link';
+      inputUrl.value = urlBaru.trim();
+
+      const inputPassword = document.createElement('input');
+      inputPassword.type = 'hidden';
+      inputPassword.name = 'password';
+      inputPassword.value = passwordBaru.trim();
+      
+      form.appendChild(inputNama);
+      form.appendChild(inputUrl);
+      form.appendChild(inputPassword);
+      document.body.appendChild(form);
+      form.submit();
+  }
+  </script>
+</body>
+</html>
+
